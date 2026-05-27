@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>minus — music player</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="minus">
+<meta name="theme-color" content="#080b12">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Grotesk:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- Ambient layered background -->
+  <div id="ambient">
+    <canvas id="bg-canvas"></canvas>
+    <div id="noise-overlay"></div>
+  </div>
+
+  <!-- ─── LIBRARY VIEW ─── -->
+  <div class="view" id="library-view">
+    <div class="lib-header">
+      <div class="lib-wordmark">
+        <span class="lib-minus">−</span><span class="lib-name">minus</span>
+      </div>
+      <div class="lib-header-actions">
+        <button class="install-perm-btn" id="install-perm-btn" title="Install app" aria-label="Install app">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 2v13m0 0l-4-4m4 4l4-4"/>
+            <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2"/>
+          </svg>
+          <span class="install-perm-label">install</span>
+        </button>
+        <button class="load-btn" id="load-btn-top">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          import
+        </button>
+        <button class="info-btn" id="info-btn" title="About" aria-label="About minus">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/>
+            <line x1="12" y1="12" x2="12" y2="16" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+
+    <div id="track-container">
+      <div id="empty-state">
+        <div class="empty-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
+          </svg>
+        </div>
+        <div class="empty-title">nothing here yet</div>
+        <div class="empty-sub">import your audio files to begin</div>
+        <div class="empty-actions">
+          <button class="empty-load-btn" id="scan-btn-empty">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            scan folder
+          </button>
+          <button class="empty-load-btn" id="load-btn-main">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            load files
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PLAYER VIEW ─── -->
+  <div class="view hidden" id="player-view">
+    <div class="player-header">
+      <button class="back-btn" id="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <span class="player-label">now playing</span>
+      <div class="header-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- Art -->
+    <div class="art-container">
+      <div class="art-glow" id="art-glow"></div>
+      <div class="art-ring" id="art-ring"></div>
+      <div class="art-outer">
+        <div class="art-inner" id="art-display">
+          <img id="art-img" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:1;">
+          <span id="art-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;position:relative;z-index:2;"></span>
+          <div class="art-shimmer"></div>
+        </div>
+      </div>
+      <div id="vis-container"><canvas id="vis-canvas"></canvas></div>
+      <!-- Floating particles -->
+      <div id="particles-container"></div>
+    </div>
+
+    <!-- Meta -->
+    <div class="track-meta">
+      <div class="meta-texts">
+        <div class="marquee-wrap">
+          <div class="marquee-inner" id="title-marquee">
+            <div id="now-title">—</div>
+          </div>
+        </div>
+        <div id="now-artist">no track loaded</div>
+      </div>
+      <button class="fav-btn" id="fav-btn" aria-label="favourite">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section">
+      <div class="progress-bar-wrap" id="progress-bar-wrap">
+        <div class="progress-track"></div>
+        <div id="progress-fill">
+          <div class="progress-head"></div>
+        </div>
+      </div>
+      <div class="time-row">
+        <span id="cur-time">0:00</span>
+        <span id="dur-time">0:00</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-row">
+      <button class="ctrl-btn" id="shuffle-btn" title="Shuffle">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 3 21 3 21 8"/>
+          <line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/>
+          <line x1="15" y1="15" x2="21" y2="21"/>
+          <line x1="4" y1="4" x2="9" y2="9"/>
+        </svg>
+      </button>
+      <button class="ctrl-btn ctrl-skip" id="prev-btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="19 20 9 12 19 4 19 20"/>
+          <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" fill="none"/>
+        </svg>
+      </button>
+      <button class="play-main" id="main-play-btn">
+        <div class="play-ring-anim" id="play-ring"></div>
+        <svg id="play-icon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+      </button>
+      <button class="ctrl-btn ctrl-skip" id="next-btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 4 15 12 5 20 5 4"/>
+          <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" fill="none"/>
+        </svg>
+      </button>
+      <button class="ctrl-btn" id="repeat-btn" title="Repeat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="17 1 21 5 17 9"/>
+          <path d="M3 11V9a4 4 0 014-4h14"/>
+          <polyline points="7 23 3 19 7 15"/>
+          <path d="M21 13v2a4 4 0 01-4 4H3"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Volume (system) -->
+    <div class="volume-row">
+      <span class="vol-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        </svg>
+      </span>
+      <div class="vol-hint">use volume buttons</div>
+      <span class="vol-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+        </svg>
+      </span>
+    </div>
+
+    <!-- Queue / Up Next -->
+    <div class="queue-section">
+      <div class="queue-header">
+        <span class="queue-label">up next</span>
+        <span class="queue-count" id="queue-count"></span>
+      </div>
+      <div class="queue-list" id="queue-list"></div>
+    </div>
+  </div>
+
+  <!-- Now Playing Pill -->
+  <div id="np-pill" class="hidden-pill">
+    <div class="pill-art"><img id="pill-img" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:9px;"><span id="pill-emoji">♪</span></div>
+    <div class="pill-info">
+      <div class="pill-name" id="pill-name">—</div>
+      <div class="pill-artist" id="pill-artist">—</div>
+    </div>
+    <div class="pill-controls">
+      <button class="pill-btn" id="pill-prev">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="19 20 9 12 19 4"/>
+          <rect x="5" y="4" width="2" height="16" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="pill-btn play-btn" id="pill-play">
+        <svg id="pill-play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+      </button>
+      <button class="pill-btn" id="pill-next">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 4 15 12 5 20"/>
+          <rect x="17" y="4" width="2" height="16" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+
+
+<!-- Install Banner -->
+<div id="install-banner">
+  <div class="install-banner-progress"></div>
+  <div class="install-icon">−</div>
+  <div class="install-text">
+    <div class="install-title">install minus</div>
+    <div class="install-sub">add to your home screen</div>
+  </div>
+  <button id="install-btn">install</button>
+  <button id="install-dismiss" aria-label="dismiss">✕</button>
+</div>
+
+<!-- iOS install instructions sheet (global overlay) -->
+<div id="ios-install-sheet">
+  <div id="ios-install-card">
+    <div class="ios-sheet-top">
+      <span class="ios-sheet-title">add to home screen</span>
+      <button id="ios-sheet-close">✕</button>
+    </div>
+    <div class="ios-steps">
+      <div class="ios-step">
+        <div class="ios-step-num">1</div>
+        <div class="ios-step-text">tap <strong>Share</strong> in your browser toolbar
+          <svg class="ios-share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+        </div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">2</div>
+        <div class="ios-step-text">scroll down and tap <strong>Add to Home Screen</strong></div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">3</div>
+        <div class="ios-step-text">tap <strong>Add</strong> — minus opens like a native app</div>
+      </div>
+    </div>
+    <div class="ios-arrow-hint">▼ the share button is at the bottom of your screen</div>
+  </div>
+</div>
+<input type="file" id="file-input" accept="audio/*" multiple style="display:none">
+<input type="file" id="folder-input" multiple webkitdirectory style="display:none">
+
+<!-- ─── ABOUT SHEET ─── -->
+<div id="about-sheet">
+  <div id="about-card">
+    <button id="about-close" aria-label="Close">✕</button>
+
+    <div class="about-logo">
+      <span class="lib-minus">−</span><span class="lib-name">minus</span>
+    </div>
+
+    <div class="about-tagline">a minimal local music player</div>
+
+    <div class="about-version-badge">v1.1.0</div>
+
+    <div class="about-divider"></div>
+
+    <div class="about-rows">
+      <div class="about-row">
+        <span class="about-label">author</span>
+        <span class="about-value">Saikot Islam Abir</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">built with</span>
+        <span class="about-value">vanilla JS · Web Audio API · IndexedDB</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">storage</span>
+        <span class="about-value">100% local · no server · no tracking</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">formats</span>
+        <span class="about-value">mp3 · flac · aac · ogg · wav · m4a · opus</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">pwa</span>
+        <span class="about-value">installable · works offline</span>
+      </div>
+      <div class="about-row">
+        <span class="about-label">released</span>
+        <span class="about-value">2025</span>
+      </div>
+    </div>
+
+    <div class="about-divider"></div>
+
+    <div class="about-features">
+      <div class="about-feat-title">what's in v1.1</div>
+      <ul class="about-feat-list">
+        <li>persistent library via IndexedDB</li>
+        <li>album art extraction from tags</li>
+        <li>lock screen &amp; notification controls</li>
+        <li>shuffle · repeat one · repeat all</li>
+        <li>audio visualizer &amp; ambient glow</li>
+        <li>folder scan on Android &amp; desktop</li>
+      </ul>
+    </div>
+
+    <div class="about-footer">
+      made with <span class="about-heart">♥</span> · no ads · no accounts
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

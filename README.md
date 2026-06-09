@@ -11,7 +11,7 @@ Live -- https://minusplayer.netlify.app
 
 ```
 minus/
-├── index.html      — app shell & markup
+├── index.html      — app shell
 ├── style.css       — theme, layout & animations
 ├── app.js          — playback logic & PWA wiring
 ├── manifest.json   — PWA manifest (name, icons, theme)

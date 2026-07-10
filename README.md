@@ -9,7 +9,7 @@ No app store. No account. No internet required after first load.
  
 Live -- https://minusplayer.netlify.app
   
-```
+``` 
 minus/
 ├── index.html      — app shell
 ├── style.css       — theme, layout & animations

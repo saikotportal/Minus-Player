@@ -19,7 +19,7 @@ minus/
 ├── icons/
 │   ├── icon-192.png
 │   └── icon-512.png
-└── README.md
+└── README.md 
 ```
 
 ---
